@@ -932,7 +932,7 @@ public class PApplet implements PConstants {
 
 	boolean insideSettings;
 
-	String renderer = JAVA2D;
+	String renderer = FX2D;
 //  int quality = 2;
 	int smooth = 1; // default smoothing (whatever that means for the renderer)
 
@@ -2016,7 +2016,7 @@ public class PApplet implements PConstants {
 	}
 
 	public PGraphics createGraphics(int w, int h) {
-		return this.createGraphics(w, h, JAVA2D);
+		return this.createGraphics(w, h, FX2D);
 	}
 
 	/**
@@ -2126,22 +2126,6 @@ public class PApplet implements PConstants {
 	 *             ({@link PApplet#savePath} will be called)
 	 */
 	protected PGraphics makeGraphics(int w, int h, String renderer, String path, boolean primary) {
-//    String openglError = external ?
-//      // This first one should no longer be possible
-//      "Before using OpenGL, first select " +
-//      "Import Library > OpenGL from the Sketch menu." :
-//       // Welcome to Java programming! The training wheels are off.
-//      "The Java classpath and native library path is not " +
-//      "properly set for using the OpenGL library.";
-
-		if (!primary && !this.g.isGL()) {
-			if (P2D.equals(renderer)) {
-				throw new RuntimeException("createGraphics() with P2D requires size() to use P2D or P3D");
-			}
-			if (P3D.equals(renderer)) {
-				throw new RuntimeException("createGraphics() with P3D or OPENGL requires size() to use P2D or P3D");
-			}
-		}
 
 		try {
 			Class<?> rendererClass = Thread.currentThread().getContextClassLoader().loadClass(renderer);
