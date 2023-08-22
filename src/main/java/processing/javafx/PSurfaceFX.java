@@ -54,14 +54,22 @@ import processing.core.PConstants;
 import processing.core.PImage;
 import processing.core.PSurface;
 
+/**
+ * This is the main part of the javafx code. It create the canvas and insert the
+ * PApplet in it.
+ */
 public class PSurfaceFX implements PSurface {
+	/* The generic PApplet */
 	PApplet sketch;
 
+	/* The component that will allow drawing. */
 	PGraphicsFX2D fx;
-	// Region stage;
-	Canvas canvas;
 
-	private PApplicationFX inner_app;
+	/*
+	 * The canvas containing the drawing and used as javaFx Node exported by the
+	 * library.
+	 */
+	Canvas canvas;
 
 	final Animation animation;
 	float frameRate = 30;
@@ -244,10 +252,15 @@ public class PSurfaceFX implements PSurface {
 	public void initOffscreen(PApplet sketch) {
 	}
 
-//  public Component initComponent(PApplet sketch) {
-//    return null;
-//  }
-
+	/**
+	 * In the standard processing 3 project, PApplicationFX was the class extending
+	 * ApplicationFX which was launching the full javafx application.
+	 * 
+	 * This is very reduced now that we just export the canvas and the class should
+	 * probably removed and the code exported as standard PSurfaceFX code. But for
+	 * now it is not done, and maybe it can still be usefull if we need to
+	 * multithread some stuff.
+	 */
 	public class PApplicationFX {
 		public PSurfaceFX surface;
 
@@ -385,7 +398,7 @@ public class PSurfaceFX implements PSurface {
 											 * spanDisplays) {
 											 */
 		this.sketch = sketch;
-		this.inner_app = new PApplicationFX(this);
+		new PApplicationFX(this);
 
 		// wait for stage to be initialized on its own thread before continuing
 //		while (this.stage == null) {
