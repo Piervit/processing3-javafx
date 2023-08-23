@@ -42,12 +42,15 @@ import javafx.scene.Cursor;
 import javafx.scene.ImageCursor;
 import javafx.scene.SceneAntialiasing;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.control.Button;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import processing.core.PApplet;
 import processing.core.PConstants;
@@ -70,6 +73,8 @@ public class PSurfaceFX implements PSurface {
 	 * library.
 	 */
 	Canvas canvas;
+
+	Pane root;
 
 	final Animation animation;
 	float frameRate = 30;
@@ -120,11 +125,12 @@ public class PSurfaceFX implements PSurface {
 		// setting rate to negative so that event fires at the start of
 		// the key frame and first frame is drawn immediately
 		this.animation.setRate(-this.frameRate);
+		this.root = new InternalGraphWindows(this.canvas);
 	}
 
 	@Override
 	public Object getNative() {
-		return this.canvas;
+		return this.root;
 	}
 
 	/**
@@ -152,6 +158,44 @@ public class PSurfaceFX implements PSurface {
 	 */
 	public void setAlwaysOnTop(boolean b) {
 		return;
+	}
+
+	class InternalGraphWindows extends VBox {
+
+		private final Canvas content;
+
+		Double deltaXBase;
+		Double deltaYBase;
+
+		public InternalGraphWindows(final Canvas content) {
+			super();
+			this.setFillWidth(true);
+			this.content = content;
+			// this.getStyleClass().add(InternalGraphWindows.CSS_CLASS);
+			final Button DraggagbleBtn = new Button("Drag");
+
+			DraggagbleBtn.setOnMouseReleased(event -> {
+				this.deltaXBase = null;
+				this.deltaYBase = null;
+			});
+			DraggagbleBtn.setOnMouseDragged(event -> {
+				final double deltaX = event.getX();
+				final double deltaY = event.getY();
+				if (this.deltaXBase == null) {
+					this.deltaXBase = deltaX;
+					this.deltaYBase = deltaY;
+				}
+				this.content.setWidth((this.content.getWidth() + deltaX) - this.deltaXBase);
+				this.content.setHeight((this.content.getHeight() + deltaY) - this.deltaYBase);
+				this.deltaXBase = deltaX;
+				this.deltaYBase = deltaY;
+			});
+
+			this.getChildren().add(this.content);
+			this.getChildren().add(DraggagbleBtn);
+
+		}
+
 	}
 
 	class ResizableCanvas extends Canvas {
@@ -227,10 +271,6 @@ public class PSurfaceFX implements PSurface {
 				}
 			});
 		}
-
-		// public Node getNode() {
-		// return PSurfaceFX.this.stage;
-		// }
 
 		@Override
 		public boolean isResizable() {
