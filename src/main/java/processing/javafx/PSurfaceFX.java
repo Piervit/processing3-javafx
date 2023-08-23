@@ -24,7 +24,6 @@ package processing.javafx;
 
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.Rectangle;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
@@ -42,13 +41,13 @@ import javafx.scene.Cursor;
 import javafx.scene.ImageCursor;
 import javafx.scene.SceneAntialiasing;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.control.Button;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -125,7 +124,6 @@ public class PSurfaceFX implements PSurface {
 		// setting rate to negative so that event fires at the start of
 		// the key frame and first frame is drawn immediately
 		this.animation.setRate(-this.frameRate);
-		this.root = new InternalGraphWindows(this.canvas);
 	}
 
 	@Override
@@ -163,6 +161,8 @@ public class PSurfaceFX implements PSurface {
 	class InternalGraphWindows extends VBox {
 
 		private final Canvas content;
+		private final Canvas rightBorder;
+		private final Canvas bottomBorder;
 
 		Double deltaXBase;
 		Double deltaYBase;
@@ -171,28 +171,42 @@ public class PSurfaceFX implements PSurface {
 			super();
 			this.setFillWidth(true);
 			this.content = content;
-			// this.getStyleClass().add(InternalGraphWindows.CSS_CLASS);
-			final Button DraggagbleBtn = new Button("Drag");
+			this.rightBorder = new Canvas(5.0, content.getHeight());
+			this.rightBorder.setStyle("-fx-cursor: h-resize;");
+			this.bottomBorder = new Canvas(content.getWidth(), 5);
+			this.bottomBorder.setStyle("-fx-cursor: v-resize;");
 
-			DraggagbleBtn.setOnMouseReleased(event -> {
+			this.rightBorder.setOnMouseReleased(event -> {
 				this.deltaXBase = null;
-				this.deltaYBase = null;
 			});
-			DraggagbleBtn.setOnMouseDragged(event -> {
-				final double deltaX = event.getX();
-				final double deltaY = event.getY();
+			this.rightBorder.setOnMouseDragged(event -> {
+				final double deltaX = event.getScreenX();
 				if (this.deltaXBase == null) {
 					this.deltaXBase = deltaX;
-					this.deltaYBase = deltaY;
 				}
 				this.content.setWidth((this.content.getWidth() + deltaX) - this.deltaXBase);
-				this.content.setHeight((this.content.getHeight() + deltaY) - this.deltaYBase);
+				this.rightBorder.setHeight(this.content.getHeight());
 				this.deltaXBase = deltaX;
+			});
+			this.rightBorder.setOnMouseReleased(event -> {
+				this.deltaXBase = null;
+			});
+			this.bottomBorder.setOnMouseDragged(event -> {
+				final double deltaY = event.getScreenY();
+				if (this.deltaYBase == null) {
+					this.deltaYBase = deltaY;
+				}
+				this.content.setHeight((this.content.getHeight() + deltaY) - this.deltaYBase);
+				this.bottomBorder.setWidth(this.content.getWidth());
 				this.deltaYBase = deltaY;
 			});
-
-			this.getChildren().add(this.content);
-			this.getChildren().add(DraggagbleBtn);
+			HBox horz_content = new HBox();
+			horz_content.getChildren().add(this.content);
+			horz_content.getChildren().add(this.rightBorder);
+			this.getChildren().add(horz_content);
+			this.getChildren().add(this.bottomBorder);
+			this.rightBorder.setVisible(true);
+			this.bottomBorder.setVisible(true);
 
 		}
 
@@ -355,8 +369,8 @@ public class PSurfaceFX implements PSurface {
 			boolean fullScreen = sketch.sketchFullScreen();
 			boolean spanDisplays = sketch.sketchDisplay() == PConstants.SPAN;
 
-			Rectangle primaryScreenRect = displayDevice.getDefaultConfiguration().getBounds();
-			Rectangle screenRect = primaryScreenRect;
+			java.awt.Rectangle primaryScreenRect = displayDevice.getDefaultConfiguration().getBounds();
+			java.awt.Rectangle screenRect = primaryScreenRect;
 			if (fullScreen || spanDisplays) {
 				double minX = screenRect.getMinX();
 				double maxX = screenRect.getMaxX();
@@ -364,14 +378,14 @@ public class PSurfaceFX implements PSurface {
 				double maxY = screenRect.getMaxY();
 				if (spanDisplays) {
 					for (GraphicsDevice s : environment.getScreenDevices()) {
-						Rectangle bounds = s.getDefaultConfiguration().getBounds();
+						java.awt.Rectangle bounds = s.getDefaultConfiguration().getBounds();
 						minX = Math.min(minX, bounds.getMinX());
 						maxX = Math.max(maxX, bounds.getMaxX());
 						minY = Math.min(minY, bounds.getMinY());
 						maxY = Math.max(maxY, bounds.getMaxY());
 					}
 				}
-				screenRect = new Rectangle((int) minX, (int) minY, (int) (maxX - minX), (int) (maxY - minY));
+				screenRect = new java.awt.Rectangle((int) minX, (int) minY, (int) (maxX - minX), (int) (maxY - minY));
 			}
 
 			// Set the displayWidth/Height variables inside PApplet, so that they're
@@ -439,7 +453,7 @@ public class PSurfaceFX implements PSurface {
 											 */
 		this.sketch = sketch;
 		new PApplicationFX(this);
-
+		this.root = new InternalGraphWindows(this.canvas);
 		// wait for stage to be initialized on its own thread before continuing
 //		while (this.stage == null) {
 //			try {
