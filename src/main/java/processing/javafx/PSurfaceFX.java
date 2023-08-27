@@ -73,6 +73,7 @@ public class PSurfaceFX implements PSurface {
 	 */
 	Canvas canvas;
 
+	Thread exceptionHandlerThread;
 	Pane root;
 
 	final Animation animation;
@@ -158,6 +159,14 @@ public class PSurfaceFX implements PSurface {
 		return;
 	}
 
+	public void setVisible(boolean b) {
+		this.root.setVisible(b);
+		this.canvas.setVisible(b);
+	}
+
+	/**
+	 * The InternalGraphWindows is used to make the canvas easily resizable.
+	 */
 	class InternalGraphWindows extends VBox {
 
 		private final Canvas content;
@@ -207,6 +216,7 @@ public class PSurfaceFX implements PSurface {
 			this.getChildren().add(this.bottomBorder);
 			this.rightBorder.setVisible(true);
 			this.bottomBorder.setVisible(true);
+			// Register an event handler for a single node and a specific event type
 
 		}
 
@@ -300,6 +310,7 @@ public class PSurfaceFX implements PSurface {
 		public double prefHeight(double width) {
 			return this.getHeight();
 		}
+
 	}
 
 	@Override
@@ -468,7 +479,7 @@ public class PSurfaceFX implements PSurface {
 	}
 
 	private void startExceptionHandlerThread() {
-		Thread exceptionHandlerThread = new Thread(() -> {
+		this.exceptionHandlerThread = new Thread(() -> {
 			Throwable drawException;
 			try {
 				drawException = this.drawExceptionQueue.take();
@@ -489,36 +500,15 @@ public class PSurfaceFX implements PSurface {
 				}
 			}
 		});
-		exceptionHandlerThread.setDaemon(true);
-		exceptionHandlerThread.setName("Processing-FX-ExceptionHandler");
-		exceptionHandlerThread.start();
+		this.exceptionHandlerThread.setDaemon(true);
+		this.exceptionHandlerThread.setName("Processing-FX-ExceptionHandler");
+		this.exceptionHandlerThread.start();
 	}
-	/*
-	 * @Override public void placeWindow(int[] location) { //setFrameSize();
-	 * 
-	 * if (location != null) { // a specific location was received from the Runner
-	 * // (applet has been run more than once, user placed window)
-	 * stage.setX(location[0]); stage.setY(location[1]);
-	 * 
-	 * } else { // just center on screen // Can't use
-	 * frame.setLocationRelativeTo(null) because it sends the // frame to the main
-	 * display, which undermines the --display setting. //
-	 * frame.setLocation(screenRect.x + (screenRect.width - sketchWidth) / 2, //
-	 * screenRect.y + (screenRect.height - sketchHeight) / 2); } if (stage.getY() <
-	 * 0) { // Windows actually allows you to place frames where they can't be //
-	 * closed. Awesome. http://dev.processing.org/bugs/show_bug.cgi?id=1508
-	 * //frame.setLocation(frameLoc.x, 30); stage.setY(30); }
-	 * 
-	 * //setCanvasSize();
-	 * 
-	 * // TODO add window closing behavior // frame.addWindowListener(new
-	 * WindowAdapter() { // @Override // public void windowClosing(WindowEvent e) {
-	 * // System.exit(0); // } // });
-	 * 
-	 * // TODO handle frame resizing events // setupFrameResizeListener();
-	 * 
-	 * if (sketch.getGraphics().displayable()) { setVisible(true); } }
-	 */
+
+	private void stopExceptionHandlerThread() {
+		this.exceptionHandlerThread.interrupt();
+
+	}
 
 	// http://download.java.net/jdk8/jfxdocs/javafx/stage/Stage.html#setFullScreenExitHint-java.lang.String-
 	// http://download.java.net/jdk8/jfxdocs/javafx/stage/Stage.html#setFullScreenExitKeyCombination-javafx.scene.input.KeyCombination-
@@ -527,26 +517,6 @@ public class PSurfaceFX implements PSurface {
 		// TODO Auto-generated method stub
 		PApplet.hideMenuBar();
 	}
-
-	/**
-	 * public void setupExternalMessages() { this.stage.xProperty().addListener(new
-	 * ChangeListener<Number>() {
-	 * 
-	 * @Override public void changed(ObservableValue<? extends Number> value, Number
-	 *           oldX, Number newX) {
-	 *           PSurfaceFX.this.sketch.frameMoved(newX.intValue(),
-	 *           PSurfaceFX.this.stage.yProperty().intValue()); } });
-	 * 
-	 *           this.stage.yProperty().addListener(new ChangeListener<Number>() {
-	 * @Override public void changed(ObservableValue<? extends Number> value, Number
-	 *           oldY, Number newY) {
-	 *           PSurfaceFX.this.sketch.frameMoved(PSurfaceFX.this.stage.xProperty().intValue(),
-	 *           newY.intValue()); } });
-	 * 
-	 *           this.stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
-	 * @Override public void handle(WindowEvent we) { PSurfaceFX.this.sketch.exit();
-	 *           } }); }
-	 **/
 
 	@Override
 	public void setSize(int wide, int high) {
@@ -665,6 +635,8 @@ public class PSurfaceFX implements PSurface {
 	@Override
 	public boolean stopThread() {
 		this.animation.stop();
+		this.stopExceptionHandlerThread();
+		this.sketch.exit();
 		return true;
 	}
 
