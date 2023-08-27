@@ -194,7 +194,7 @@ public class PSurfaceFX implements PSurface {
 					this.deltaXBase = deltaX;
 				}
 				this.content.setWidth((this.content.getWidth() + deltaX) - this.deltaXBase);
-				this.rightBorder.setHeight(this.content.getHeight());
+				this.bottomBorder.setWidth(this.content.getWidth());
 				this.deltaXBase = deltaX;
 			});
 			this.rightBorder.setOnMouseReleased(event -> {
@@ -206,7 +206,7 @@ public class PSurfaceFX implements PSurface {
 					this.deltaYBase = deltaY;
 				}
 				this.content.setHeight((this.content.getHeight() + deltaY) - this.deltaYBase);
-				this.bottomBorder.setWidth(this.content.getWidth());
+				this.rightBorder.setHeight(this.content.getHeight());
 				this.deltaYBase = deltaY;
 			});
 			HBox horz_content = new HBox();
