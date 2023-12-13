@@ -26,15 +26,17 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
-import javafx.animation.Animation;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.scene.Cursor;
@@ -50,7 +52,6 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PImage;
@@ -76,55 +77,52 @@ public class PSurfaceFX implements PSurface {
 	Thread exceptionHandlerThread;
 	Pane root;
 
-	final Animation animation;
+	// final Animation animation;
 	float frameRate = 30;
+	private ReentrantLock run_lock;
+	Runnable run_drawing;
+	private AtomicBoolean is_running = new AtomicBoolean();
+	ScheduledFuture<?> animationHandle;
+
+	ScheduledExecutorService schedule_drawer;
 
 	private SynchronousQueue<Throwable> drawExceptionQueue = new SynchronousQueue<>();
 
 	public PSurfaceFX(PGraphicsFX2D graphics) {
 		this.fx = graphics;
 		this.canvas = new ResizableCanvas();
+		this.run_lock = new ReentrantLock();
+		this.is_running.set(false);
 
-		// set up main drawing loop
-		KeyFrame keyFrame = new KeyFrame(Duration.millis(1000), new EventHandler<ActionEvent>() {
+		this.run_drawing = new Runnable() {
 			@Override
-			public void handle(ActionEvent event) {
-				long startNanoTime = System.nanoTime();
-				try {
-					PSurfaceFX.this.sketch.handleDraw();
-				} catch (Throwable e) {
-					// Let exception handler thread crash with our exception
-					PSurfaceFX.this.drawExceptionQueue.offer(e);
-					// Stop animating right now so nothing runs afterwards
-					// and crash frame can be for example traced by println()
-					PSurfaceFX.this.animation.stop();
+			public void run() {
+				if (PSurfaceFX.this.is_running.get()) {
 					return;
 				}
-				long drawNanos = System.nanoTime() - startNanoTime;
+				PSurfaceFX.this.is_running.set(true);
+				Platform.runLater(() -> {
+					try {
+						PSurfaceFX.this.sketch.handleDraw();
+					} catch (Throwable e) {
+						// Let exception handler thread crash with our exception
+						PSurfaceFX.this.drawExceptionQueue.offer(e);
+						// Stop animating right now so nothing runs afterwards
+						// and crash frame can be for example traced by println()
+						// PSurfaceFX.this.stopThread();
+						return;
+					} finally {
+						PSurfaceFX.this.is_running.set(false);
+					}
+
+				});
 
 				if (PSurfaceFX.this.sketch.exitCalled()) {
-					// using Platform.runLater() didn't work
-//          Platform.runLater(new Runnable() {
-//            public void run() {
-					// instead of System.exit(), safely shut down JavaFX this way
 					Platform.exit();
-//            }
-//          });
-				}
-				if (PSurfaceFX.this.sketch.frameCount > 5) {
-					PSurfaceFX.this.animation.setRate(-PApplet.min(1e9f / drawNanos, PSurfaceFX.this.frameRate));
 				}
 			}
-		});
-		this.animation = new Timeline(keyFrame);
-		this.animation.setCycleCount(Animation.INDEFINITE);
+		};
 
-		// key frame has duration of 1 second, so the rate of the animation
-		// should be set to frames per second
-
-		// setting rate to negative so that event fires at the start of
-		// the key frame and first frame is drawn immediately
-		this.animation.setRate(-this.frameRate);
 	}
 
 	@Override
@@ -187,8 +185,10 @@ public class PSurfaceFX implements PSurface {
 
 			this.rightBorder.setOnMouseReleased(event -> {
 				this.deltaXBase = null;
+				PSurfaceFX.this.resumeThread();
 			});
 			this.rightBorder.setOnMouseDragged(event -> {
+				PSurfaceFX.this.pauseThread();
 				final double deltaX = event.getScreenX();
 				if (this.deltaXBase == null) {
 					this.deltaXBase = deltaX;
@@ -199,8 +199,10 @@ public class PSurfaceFX implements PSurface {
 			});
 			this.rightBorder.setOnMouseReleased(event -> {
 				this.deltaXBase = null;
+				PSurfaceFX.this.resumeThread();
 			});
 			this.bottomBorder.setOnMouseDragged(event -> {
+				PSurfaceFX.this.pauseThread();
 				final double deltaY = event.getScreenY();
 				if (this.deltaYBase == null) {
 					this.deltaYBase = deltaY;
@@ -449,11 +451,25 @@ public class PSurfaceFX implements PSurface {
 			// the stage, assign it only when it is all set up
 			// surface.stage = PSurfaceFX.this.stage;
 
+			PSurfaceFX.this.schedule_drawer = Executors.newScheduledThreadPool(1);
+			PSurfaceFX.this.animationHandle = PSurfaceFX.this.schedule_drawer
+					.scheduleAtFixedRate(PSurfaceFX.this.run_drawing, 34, 34, TimeUnit.MILLISECONDS);
+		}
+
+		public void pause() {
+			PSurfaceFX.this.schedule_drawer.shutdown();
+		}
+
+		public void resume() {
+			PSurfaceFX.this.schedule_drawer = Executors.newScheduledThreadPool(1);
+			PSurfaceFX.this.animationHandle = PSurfaceFX.this.schedule_drawer
+					.scheduleAtFixedRate(PSurfaceFX.this.run_drawing, 34, 34, TimeUnit.MILLISECONDS);
 		}
 
 		public void stop() throws Exception {
 			this.surface.sketch.dispose();
 		}
+
 	}
 
 	// public Frame initFrame(PApplet sketch, java.awt.Color backgroundColor,
@@ -555,7 +571,6 @@ public class PSurfaceFX implements PSurface {
 		// the key frame and first frame is drawn immediately
 		if (fps > 0) {
 			this.frameRate = fps;
-			this.animation.setRate(-this.frameRate);
 		}
 	}
 
@@ -619,22 +634,23 @@ public class PSurfaceFX implements PSurface {
 
 	@Override
 	public void startThread() {
-		this.animation.play();
+		// this.animation.play();
 	}
 
 	@Override
 	public void pauseThread() {
-		this.animation.pause();
+		this.sketch.pause();
+		// this.animation.pause();
 	}
 
 	@Override
 	public void resumeThread() {
-		this.animation.play();
+		this.sketch.resume();
 	}
 
 	@Override
 	public boolean stopThread() {
-		this.animation.stop();
+		this.animationHandle.cancel(true);
 		this.stopExceptionHandlerThread();
 		this.sketch.exit();
 		return true;
@@ -642,7 +658,7 @@ public class PSurfaceFX implements PSurface {
 
 	@Override
 	public boolean isStopped() {
-		return this.animation.getStatus() == Animation.Status.STOPPED;
+		return false;
 	}
 
 	static Map<EventType<? extends MouseEvent>, Integer> mouseMap = new HashMap<EventType<? extends MouseEvent>, Integer>();

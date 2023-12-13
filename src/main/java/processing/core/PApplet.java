@@ -781,12 +781,6 @@ public class PApplet implements PConstants {
 	/** used by the UncaughtExceptionHandler, so has to be static */
 	static Throwable uncaughtThrowable;
 
-	// public, but undocumented.. removing for 3.0a5
-//  /**
-//   * true if the animation thread is paused.
-//   */
-//  public volatile boolean paused;
-
 	/**
 	 * true if exit() has been called so that things shut down once the main thread
 	 * kicks off.
@@ -1324,7 +1318,6 @@ public class PApplet implements PConstants {
 	 * needs to have a usable screen before getting things rolling.
 	 */
 	public void start() {
-//    paused = false; // unpause the thread  // removing for 3.0a5, don't think we want this here
 
 		this.resume();
 		this.handleMethods("resume");
@@ -1343,33 +1336,11 @@ public class PApplet implements PConstants {
 		// this used to shut down the sketch, but that code has
 		// been moved to destroy/dispose()
 
-//    if (paused) {
-//      synchronized (pauseObject) {
-//      try {
-//          pauseObject.wait();
-//        } catch (InterruptedException e) {
-//          // waiting for this interrupt on a start() (resume) call
-//        }
-//      }
-//    }
-
-		// paused = true; // causes animation thread to sleep // 3.0a5
-		this.pause();
 		this.handleMethods("pause");
 		// calling this down here, since it's another thread it's safer to call
 		// pause() and the registered pause methods first.
 		this.surface.pauseThread();
 
-		// actual pause will happen in the run() method
-
-//    synchronized (pauseObject) {
-//      debug("stop() calling pauseObject.wait()");
-//      try {
-//        pauseObject.wait();
-//      } catch (InterruptedException e) {
-//        // waiting for this interrupt on a start() (resume) call
-//      }
-//    }
 	}
 
 	/**
@@ -2245,26 +2216,10 @@ public class PApplet implements PConstants {
 	protected long frameRateLastNanos = 0;
 
 	public void handleDraw() {
-		// debug("handleDraw() " + g + " " + looping + " " + redraw + " valid:" +
-		// this.isValid() + " visible:" + this.isVisible());
 
-		// canDraw = g != null && (looping || redraw);
 		if ((this.g == null) || (!this.looping && !this.redraw)) {
 			return;
-//    System.out.println("looping/redraw = " + looping + " " + redraw);
 		}
-
-		// no longer in use by any of our renderers
-//    if (!g.canDraw()) {
-//      debug("g.canDraw() is false");
-//      // Don't draw if the renderer is not yet ready.
-//      // (e.g. OpenGL has to wait for a peer to be on screen)
-//      return;
-//    }
-
-		// Store the quality setting in case it's changed during draw and the
-		// drawing context needs to be re-built before the next frame.
-//    int pquality = g.smooth;
 
 		if (this.insideDraw) {
 			System.err.println("handleDraw() called before finishing");
@@ -2280,19 +2235,8 @@ public class PApplet implements PConstants {
 		long now = System.nanoTime();
 
 		if (this.frameCount == 0) {
-			// 3.0a5 should be no longer needed; handled by PSurface
-			// surface.checkDisplaySize();
 
-//        try {
-			// println("Calling setup()");
 			this.setup();
-			// println("Done with setup()");
-
-//        } catch (RendererChangeException e) {
-//          // Give up, instead set the new renderer and re-attempt setup()
-//          return;
-//        }
-//      defaultSize = false;
 
 		} else { // frameCount > 0, meaning an actual draw()
 			// update the current frameRate
