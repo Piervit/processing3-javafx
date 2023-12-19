@@ -340,17 +340,6 @@ public class PSurfaceFX implements PSurface {
 
 			PApplet sketch = this.surface.sketch;
 
-			/**
-			 * Commented by Pierre Vittet getRenderScale does not exist anymore. we will see
-			 * if it create bugs.
-			 **/
-			// float renderScale = Screen.getMainScreen().getRenderScale();
-			// if (PApplet.platform == PConstants.MACOSX) {
-			// for (Screen s : Screen.getScreens()) {
-			// renderScale = Math.max(renderScale, s.getRenderScale());
-			// }
-			// }
-			// float uiScale = Screen.getMainScreen().getUIScale();
 			if ((sketch.pixelDensity == 2)) {// && (renderScale < 2)) {
 				sketch.pixelDensity = 1;
 				sketch.g.pixelDensity = 1;
@@ -401,8 +390,6 @@ public class PSurfaceFX implements PSurface {
 				screenRect = new java.awt.Rectangle((int) minX, (int) minY, (int) (maxX - minX), (int) (maxY - minY));
 			}
 
-			// Set the displayWidth/Height variables inside PApplet, so that they're
-			// usable and can even be returned by the sketchWidth()/Height() methods.
 			sketch.displayWidth = (int) screenRect.getWidth();
 			sketch.displayHeight = (int) screenRect.getHeight();
 
@@ -413,20 +400,8 @@ public class PSurfaceFX implements PSurface {
 				sketchWidth = (int) (screenRect.getWidth());// / uiScale);
 				sketchHeight = (int) (screenRect.getHeight()); // / uiScale);
 
-				// PSurfaceFX.this.stage.initStyle(StageStyle.UNDECORATED);
-				// PSurfaceFX.this.stage.setX(screenRect.getMinX()); // / uiScale);
-				// PSurfaceFX.this.stage.setY(screenRect.getMinY()); // / uiScale);
-				// PSurfaceFX.this.stage.setWidth(screenRect.getWidth()); // / uiScale);
-				// PSurfaceFX.this.stage.setHeight(screenRect.getHeight()); // / uiScale);
 			}
 
-			// StackPane stackPane = new StackPane();
-			// stackPane.getChildren().add(canvas);
-			// canvas.widthProperty().bind(stackPane.widthProperty());
-			// canvas.heightProperty().bind(stackPane.heightProperty());
-
-			int width = sketchWidth;
-			int height = sketchHeight;
 			int smooth = sketch.sketchSmooth();
 
 			// Workaround for https://bugs.openjdk.java.net/browse/JDK-8136495
@@ -573,11 +548,6 @@ public class PSurfaceFX implements PSurface {
 			this.frameRate = fps;
 		}
 	}
-
-//  @Override
-//  public void requestFocus() {
-//    canvas.requestFocus();
-//  }
 
 	Cursor lastCursor = Cursor.DEFAULT;
 
